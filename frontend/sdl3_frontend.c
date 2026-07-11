@@ -19,8 +19,8 @@
 
 #include "emu_runner.h"
 
-#define SIM_WINDOW_WIDTH 640
-#define SIM_WINDOW_HEIGHT 480
+#define EMU_WINDOW_WIDTH 640
+#define EMU_WINDOW_HEIGHT 480
 #define APP_AUDIO_MAX_QUEUE_MS 100
 
 #ifdef _WIN32
@@ -52,10 +52,10 @@ typedef struct
   WNDPROC old_wndproc;
   int pending_command;
 #endif
-} sim_sdl3_app_t;
+} emu_sdl3_app_t;
 
-static int app_load_rom(sim_sdl3_app_t *app, const char *filename);
-static void app_toggle_fullscreen(sim_sdl3_app_t *app);
+static int app_load_rom(emu_sdl3_app_t *app, const char *filename);
+static void app_toggle_fullscreen(emu_sdl3_app_t *app);
 
 static void app_log(void *userdata, const char *message)
 {
@@ -66,7 +66,7 @@ static void app_log(void *userdata, const char *message)
   }
 }
 
-static void app_clear_video(sim_sdl3_app_t *app)
+static void app_clear_video(emu_sdl3_app_t *app)
 {
   if (!app || !app->window)
   {
@@ -83,17 +83,17 @@ static void app_clear_video(sim_sdl3_app_t *app)
   SDL_UpdateWindowSurface(app->window);
 }
 
-static SDL_PixelFormat app_sdl_pixel_format(sim_pixel_format_t format)
+static SDL_PixelFormat app_sdl_pixel_format(emu_pixel_format_t format)
 {
   switch (format)
   {
-    case SIM_PIXEL_FORMAT_RGB565:
+    case EMU_PIXEL_FORMAT_RGB565:
     default:
       return SDL_PIXELFORMAT_RGB565;
   }
 }
 
-static void app_recreate_frame_surface(sim_sdl3_app_t *app, const sim_video_frame_t *frame)
+static void app_recreate_frame_surface(emu_sdl3_app_t *app, const emu_video_frame_t *frame)
 {
   if (app->frame_surface)
   {
@@ -110,9 +110,9 @@ static void app_recreate_frame_surface(sim_sdl3_app_t *app, const sim_video_fram
   app->frame_pitch = frame->pitch;
 }
 
-static void app_video_present(void *userdata, const sim_video_frame_t *frame)
+static void app_video_present(void *userdata, const emu_video_frame_t *frame)
 {
-  sim_sdl3_app_t *app = (sim_sdl3_app_t *)userdata;
+  emu_sdl3_app_t *app = (emu_sdl3_app_t *)userdata;
   SDL_Rect source;
   SDL_Rect dest;
   int width;
@@ -191,9 +191,9 @@ static void app_video_present(void *userdata, const sim_video_frame_t *frame)
   SDL_UpdateWindowSurface(app->window);
 }
 
-static void app_audio_submit(void *userdata, const sim_audio_frame_t *frame)
+static void app_audio_submit(void *userdata, const emu_audio_frame_t *frame)
 {
-  sim_sdl3_app_t *app = (sim_sdl3_app_t *)userdata;
+  emu_sdl3_app_t *app = (emu_sdl3_app_t *)userdata;
   int bytes;
   int max_queued_bytes;
   int queued_bytes;
@@ -216,9 +216,9 @@ static void app_audio_submit(void *userdata, const sim_audio_frame_t *frame)
   SDL_PutAudioStreamData(app->audio, frame->samples, bytes);
 }
 
-static void app_input_poll(void *userdata, sim_input_state_t *state)
+static void app_input_poll(void *userdata, emu_input_state_t *state)
 {
-  sim_sdl3_app_t *app = (sim_sdl3_app_t *)userdata;
+  emu_sdl3_app_t *app = (emu_sdl3_app_t *)userdata;
 
   if (!app || !state)
   {
@@ -228,7 +228,7 @@ static void app_input_poll(void *userdata, sim_input_state_t *state)
   state->buttons = app->input_buttons;
 }
 
-static void app_update_keyboard(sim_sdl3_app_t *app)
+static void app_update_keyboard(emu_sdl3_app_t *app)
 {
   const bool *keys = SDL_GetKeyboardState(NULL);
   uint32_t buttons = 0;
@@ -238,23 +238,23 @@ static void app_update_keyboard(sim_sdl3_app_t *app)
     return;
   }
 
-  if (keys[SDL_SCANCODE_UP])       buttons |= SIM_INPUT_UP;
-  if (keys[SDL_SCANCODE_DOWN])     buttons |= SIM_INPUT_DOWN;
-  if (keys[SDL_SCANCODE_LEFT])     buttons |= SIM_INPUT_LEFT;
-  if (keys[SDL_SCANCODE_RIGHT])    buttons |= SIM_INPUT_RIGHT;
-  if (keys[SDL_SCANCODE_A])        buttons |= SIM_INPUT_A;
-  if (keys[SDL_SCANCODE_S])        buttons |= SIM_INPUT_B;
-  if (keys[SDL_SCANCODE_D])        buttons |= SIM_INPUT_C;
-  if (keys[SDL_SCANCODE_RETURN])   buttons |= SIM_INPUT_START;
-  if (keys[SDL_SCANCODE_Q])        buttons |= SIM_INPUT_X;
-  if (keys[SDL_SCANCODE_W])        buttons |= SIM_INPUT_Y;
-  if (keys[SDL_SCANCODE_E])        buttons |= SIM_INPUT_Z;
-  if (keys[SDL_SCANCODE_BACKSPACE]) buttons |= SIM_INPUT_MODE;
+  if (keys[SDL_SCANCODE_UP])       buttons |= EMU_INPUT_UP;
+  if (keys[SDL_SCANCODE_DOWN])     buttons |= EMU_INPUT_DOWN;
+  if (keys[SDL_SCANCODE_LEFT])     buttons |= EMU_INPUT_LEFT;
+  if (keys[SDL_SCANCODE_RIGHT])    buttons |= EMU_INPUT_RIGHT;
+  if (keys[SDL_SCANCODE_A])        buttons |= EMU_INPUT_A;
+  if (keys[SDL_SCANCODE_S])        buttons |= EMU_INPUT_B;
+  if (keys[SDL_SCANCODE_D])        buttons |= EMU_INPUT_C;
+  if (keys[SDL_SCANCODE_RETURN])   buttons |= EMU_INPUT_START;
+  if (keys[SDL_SCANCODE_Q])        buttons |= EMU_INPUT_X;
+  if (keys[SDL_SCANCODE_W])        buttons |= EMU_INPUT_Y;
+  if (keys[SDL_SCANCODE_E])        buttons |= EMU_INPUT_Z;
+  if (keys[SDL_SCANCODE_BACKSPACE]) buttons |= EMU_INPUT_MODE;
 
   app->input_buttons = buttons;
 }
 
-static void app_toggle_fullscreen(sim_sdl3_app_t *app)
+static void app_toggle_fullscreen(emu_sdl3_app_t *app)
 {
   app->fullscreen = !app->fullscreen;
   SDL_SetWindowFullscreen(app->window, app->fullscreen);
@@ -269,7 +269,7 @@ static void app_toggle_fullscreen(sim_sdl3_app_t *app)
 }
 
 #ifdef _WIN32
-static void app_update_menu_state(sim_sdl3_app_t *app)
+static void app_update_menu_state(emu_sdl3_app_t *app)
 {
   if (!app || !app->menu)
   {
@@ -285,7 +285,7 @@ static void app_update_menu_state(sim_sdl3_app_t *app)
 
 static LRESULT CALLBACK app_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
-  sim_sdl3_app_t *app = (sim_sdl3_app_t *)GetPropA(hwnd, APP_PROP_NAME);
+  emu_sdl3_app_t *app = (emu_sdl3_app_t *)GetPropA(hwnd, APP_PROP_NAME);
 
   if (app && (message == WM_COMMAND))
   {
@@ -312,7 +312,7 @@ static LRESULT CALLBACK app_window_proc(HWND hwnd, UINT message, WPARAM wparam, 
   return DefWindowProcA(hwnd, message, wparam, lparam);
 }
 
-static void app_open_rom_dialog(sim_sdl3_app_t *app)
+static void app_open_rom_dialog(emu_sdl3_app_t *app)
 {
   OPENFILENAMEA ofn;
   char filename[4096];
@@ -336,7 +336,7 @@ static void app_open_rom_dialog(sim_sdl3_app_t *app)
   }
 }
 
-static void app_process_menu_command(sim_sdl3_app_t *app)
+static void app_process_menu_command(emu_sdl3_app_t *app)
 {
   int command;
 
@@ -361,7 +361,7 @@ static void app_process_menu_command(sim_sdl3_app_t *app)
     case APP_MENU_RESET:
       if (app->rom_loaded)
       {
-        sim_emu_reset();
+        emu_reset();
       }
       break;
 
@@ -381,7 +381,7 @@ static void app_process_menu_command(sim_sdl3_app_t *app)
   app_update_menu_state(app);
 }
 
-static int app_install_menu(sim_sdl3_app_t *app)
+static int app_install_menu(emu_sdl3_app_t *app)
 {
   SDL_PropertiesID props;
   HMENU menu;
@@ -442,7 +442,7 @@ static int app_install_menu(sim_sdl3_app_t *app)
   return 1;
 }
 
-static void app_destroy_menu(sim_sdl3_app_t *app)
+static void app_destroy_menu(emu_sdl3_app_t *app)
 {
   if (!app || !app->hwnd)
   {
@@ -465,24 +465,24 @@ static void app_destroy_menu(sim_sdl3_app_t *app)
   }
 }
 #else
-static void app_process_menu_command(sim_sdl3_app_t *app)
+static void app_process_menu_command(emu_sdl3_app_t *app)
 {
   (void)app;
 }
 
-static int app_install_menu(sim_sdl3_app_t *app)
+static int app_install_menu(emu_sdl3_app_t *app)
 {
   (void)app;
   return 1;
 }
 
-static void app_destroy_menu(sim_sdl3_app_t *app)
+static void app_destroy_menu(emu_sdl3_app_t *app)
 {
   (void)app;
 }
 #endif
 
-static void app_handle_events(sim_sdl3_app_t *app)
+static void app_handle_events(emu_sdl3_app_t *app)
 {
   SDL_Event event;
 
@@ -504,7 +504,7 @@ static void app_handle_events(sim_sdl3_app_t *app)
           case SDLK_TAB:
             if (app->rom_loaded)
             {
-              sim_emu_reset();
+              emu_reset();
             }
             break;
 
@@ -525,7 +525,7 @@ static void app_handle_events(sim_sdl3_app_t *app)
   app_process_menu_command(app);
 }
 
-static int app_init_audio(sim_sdl3_app_t *app)
+static int app_init_audio(emu_sdl3_app_t *app)
 {
   SDL_AudioSpec spec;
 
@@ -545,7 +545,7 @@ static int app_init_audio(sim_sdl3_app_t *app)
   return 1;
 }
 
-static void app_destroy(sim_sdl3_app_t *app)
+static void app_destroy(emu_sdl3_app_t *app)
 {
   app_destroy_menu(app);
 
@@ -570,7 +570,7 @@ static void app_destroy(sim_sdl3_app_t *app)
   SDL_Quit();
 }
 
-static int app_load_rom(sim_sdl3_app_t *app, const char *filename)
+static int app_load_rom(emu_sdl3_app_t *app, const char *filename)
 {
   if (!filename || !filename[0])
   {
@@ -582,7 +582,7 @@ static int app_load_rom(sim_sdl3_app_t *app, const char *filename)
     SDL_ClearAudioStream(app->audio);
   }
 
-  if (!sim_emu_load_rom(filename))
+  if (!emu_load_rom(filename))
   {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Genesis Plus GX", "Error loading ROM", app->window);
     app->rom_loaded = false;
@@ -594,7 +594,7 @@ static int app_load_rom(sim_sdl3_app_t *app, const char *filename)
   }
 
   app->rom_loaded = true;
-  SDL_SetWindowTitle(app->window, sim_emu_game_title());
+  SDL_SetWindowTitle(app->window, emu_game_title());
 #ifdef _WIN32
   app_update_menu_state(app);
 #endif
@@ -603,8 +603,8 @@ static int app_load_rom(sim_sdl3_app_t *app, const char *filename)
 
 int main(int argc, char *argv[])
 {
-  sim_sdl3_app_t app;
-  sim_frontend_host_t host;
+  emu_sdl3_app_t app;
+  emu_frontend_host_t host;
   Uint64 next_frame_ns;
 
   memset(&app, 0, sizeof(app));
@@ -615,7 +615,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  app.window = SDL_CreateWindow("Genesis Plus GX", SIM_WINDOW_WIDTH, SIM_WINDOW_HEIGHT, 0);
+  app.window = SDL_CreateWindow("Genesis Plus GX", EMU_WINDOW_WIDTH, EMU_WINDOW_HEIGHT, 0);
   if (!app.window)
   {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Genesis Plus GX", SDL_GetError(), NULL);
@@ -647,7 +647,7 @@ int main(int argc, char *argv[])
   host.input_poll = app_input_poll;
   host.log = app_log;
 
-  if (!sim_emu_init(&host))
+  if (!emu_init(&host))
   {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Genesis Plus GX", "Unable to initialize emulator", app.window);
     app_destroy(&app);
@@ -673,9 +673,9 @@ int main(int argc, char *argv[])
     {
       Uint64 frame_period_ns;
 
-      sim_emu_run_frame();
+      emu_run_frame();
 
-      frame_period_ns = sim_emu_frame_period_ns();
+      frame_period_ns = emu_frame_period_ns();
       next_frame_ns += frame_period_ns;
       now = SDL_GetTicksNS();
       if (next_frame_ns > now)
@@ -695,7 +695,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  sim_emu_shutdown();
+  emu_shutdown();
   app_destroy(&app);
   return 0;
 }

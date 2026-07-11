@@ -1,5 +1,5 @@
-#ifndef SIM_MAIN_H
-#define SIM_MAIN_H
+#ifndef EMU_MAIN_H
+#define EMU_MAIN_H
 
 #include "frontend_host.h"
 
@@ -8,6 +8,6 @@
 extern int log_error;
 extern int debug_on;
 
-void sim_osd_input_update(void);
+void emu_osd_input_update(void);
 
 #endif

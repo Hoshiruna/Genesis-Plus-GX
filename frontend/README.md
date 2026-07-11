@@ -68,4 +68,4 @@ frontend\build\vs2022-x64\Release\genplus_frontend.exe "C:\path\to\game.md"
 
 ## Porting Another Frontend
 
-Implement `sim_frontend_host_t` callbacks, call `sim_emu_init`, then `sim_emu_load_rom`, and run `sim_emu_run_frame` from your frame loop. Use `sim_emu_shutdown` before exit so SRAM/BRAM is flushed.
+Implement `emu_frontend_host_t` callbacks, call `emu_init`, then `emu_load_rom`, and run `emu_run_frame` from your frame loop. Use `emu_shutdown` before exit so SRAM/BRAM is flushed.

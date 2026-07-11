@@ -13,7 +13,7 @@
 #include "unzip.h"
 #include "fileio.h"
 
-#define osd_input_update sim_osd_input_update
+#define osd_input_update emu_osd_input_update
 
 #if !defined(MAXPATHLEN) || (MAXPATHLEN < 1)
 #undef MAXPATHLEN
