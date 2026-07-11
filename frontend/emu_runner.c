@@ -316,9 +316,11 @@ void sim_emu_shutdown(void)
   sim_framebuffer = NULL;
 }
 
-int sim_emu_frame_interval_ms(void)
+uint64_t sim_emu_frame_period_ns(void)
 {
-  return vdp_pal ? 20 : 16;
+  uint64_t cycles_per_frame = (uint64_t)MCYCLES_PER_LINE * (vdp_pal ? 313u : 262u);
+
+  return ((cycles_per_frame * UINT64_C(1000000000)) + (system_clock / 2u)) / system_clock;
 }
 
 const char *sim_emu_game_title(void)

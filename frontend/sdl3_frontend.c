@@ -21,6 +21,7 @@
 
 #define SIM_WINDOW_WIDTH 640
 #define SIM_WINDOW_HEIGHT 480
+#define APP_AUDIO_MAX_QUEUE_MS 100
 
 #ifdef _WIN32
 #define APP_MENU_OPEN       1001
@@ -194,6 +195,8 @@ static void app_audio_submit(void *userdata, const sim_audio_frame_t *frame)
 {
   sim_sdl3_app_t *app = (sim_sdl3_app_t *)userdata;
   int bytes;
+  int max_queued_bytes;
+  int queued_bytes;
 
   if (!app || !app->audio || !frame || !frame->samples || frame->frame_count <= 0)
   {
@@ -201,6 +204,15 @@ static void app_audio_submit(void *userdata, const sim_audio_frame_t *frame)
   }
 
   bytes = frame->frame_count * frame->channels * (int)sizeof(int16_t);
+  max_queued_bytes = (frame->sample_rate * frame->channels * (int)sizeof(int16_t) *
+      APP_AUDIO_MAX_QUEUE_MS) / 1000;
+  queued_bytes = SDL_GetAudioStreamQueued(app->audio);
+
+  if (queued_bytes > max_queued_bytes)
+  {
+    SDL_ClearAudioStream(app->audio);
+  }
+
   SDL_PutAudioStreamData(app->audio, frame->samples, bytes);
 }
 
@@ -593,7 +605,7 @@ int main(int argc, char *argv[])
 {
   sim_sdl3_app_t app;
   sim_frontend_host_t host;
-  Uint64 next_tick;
+  Uint64 next_frame_ns;
 
   memset(&app, 0, sizeof(app));
 
@@ -648,7 +660,7 @@ int main(int argc, char *argv[])
   }
 
   app.running = true;
-  next_tick = SDL_GetTicks();
+  next_frame_ns = SDL_GetTicksNS();
 
   while (app.running)
   {
@@ -659,24 +671,27 @@ int main(int argc, char *argv[])
 
     if (app.rom_loaded)
     {
+      Uint64 frame_period_ns;
+
       sim_emu_run_frame();
 
-      next_tick += (Uint64)sim_emu_frame_interval_ms();
-      now = SDL_GetTicks();
-      if (next_tick > now)
+      frame_period_ns = sim_emu_frame_period_ns();
+      next_frame_ns += frame_period_ns;
+      now = SDL_GetTicksNS();
+      if (next_frame_ns > now)
       {
-        SDL_Delay((Uint32)(next_tick - now));
+        SDL_DelayPrecise(next_frame_ns - now);
       }
-      else
+      else if ((now - next_frame_ns) > frame_period_ns)
       {
-        next_tick = now;
+        next_frame_ns = now;
       }
     }
     else
     {
       app_clear_video(&app);
       SDL_Delay(16);
-      next_tick = SDL_GetTicks();
+      next_frame_ns = SDL_GetTicksNS();
     }
   }
 
